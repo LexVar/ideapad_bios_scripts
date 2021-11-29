@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Script to turn on the battery conservation mode at 80% battery instead of 60%
+# so when I unplug the laptop from power it has more charge
+
+# I configured this script to run in a cron job every 5 minutes
+# It checks the current battery percentage, if it is below 80%
+# it keeps the battery convervation mode disabled
+# if >= 80% it turns on battery conservation mode to stop charging.
+
+CONSERVATION_MODE_PATH="/sys/bus/platform/drivers/ideapad_acpi/VPC*/conservation_mode"
+
+BAT_LEVEL=$(cat /sys/class/power_supply/BAT1/capacity)
+CONSERVATION_MODE=$(cat /sys/bus/platform/drivers/ideapad_acpi/VPC*/conservation_mode)
+
+if [[ $BAT_LEVEL -ge 80 && $CONSERVATION_MODE == 0 ]]
+then
+	echo 1 | sudo tee $CONSERVATION_MODE_PATH
+	echo "Battery is at 80%. Conservation mode enabled."
+elif [[ $BAT_LEVEL -lt 80 && $CONSERVATION_MODE == 1 ]]
+then
+	echo 0 | sudo tee $CONSERVATION_MODE_PATH
+	echo "Battery is below 80%. Conservation mode disabled."
+fi
+
+exit 0

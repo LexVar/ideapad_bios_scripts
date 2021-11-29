@@ -1,0 +1,77 @@
+#!/bin/bash
+
+ACPI_CALL_PATH=/proc/acpi/call
+NEW_MODE=$1
+
+# Check status of acpi_call module
+stat $ACPI_CALL_PATH > /dev/null 2>&1
+
+# Exit if acpi_call module is not present
+if [[ $? != 0 ]]
+then
+	>&2 echo "acpi_call module is not loaded"
+	exit 1
+fi
+
+set_bios_power_mode() {
+	case "$1" in
+		"BATTERY_SAVING")
+			echo "Turning on Battery Saving mode in BIOS"
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0013B001' | tee $ACPI_CALL_PATH
+			;;
+		"INTELLIGENT_COOLING")
+			echo "Turning on Intelligent Cooling mode in BIOS"
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x000FB001' | tee $ACPI_CALL_PATH
+			;;
+		"EXTREME_PERFORMANCE")
+			echo "Turning on Extreme Performance mode in BIOS"
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0012B001' | tee $ACPI_CALL_PATH
+			;;
+		"RAPID_CHARGE")
+			echo "Turning on Rapid Charge"
+			# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x07' | tee $ACPI_CALL_PATH
+			;;
+		*) 
+			>&2 echo "Error. Mode specified is not correct."
+			>&2 echo "Choose one of [ EXTREME_PERFORMANCE , INTELLIGENT_COOLING , BATTERY_SAVING , RAPID_CHARGE ]"
+			exit 4
+			;;
+	esac
+}
+
+check_bios_power_mode() {
+	# Check status of BIOS POWER MODE
+	echo '\_SB.PCI0.LPC0.EC0.STMD' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+	BYTE0=$(tr -d '\0' < $ACPI_CALL_PATH  | grep -o "0x.")
+	echo '\_SB.PCI0.LPC0.EC0.QTMD' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+	BYTE1=$(tr -d '\0' < $ACPI_CALL_PATH  | grep -o "0x.")
+
+	case "$BYTE0 $BYTE1" in
+		"0x0 0x0" )
+			echo -e "EXTREME_PERFORMANCE"
+			;;
+		"0x0 0x1" )
+			echo -e "BATTERY_SAVING"
+			;;
+		"0x1 0x0" )
+			echo -e "INTELLIGENT_COOLING"
+			;;
+	esac
+}
+
+MODE=$(check_bios_power_mode)
+
+if [[ "$#" -ne 1 ]]; then
+	echo "BIOS active power mode is $MODE."
+	echo "This mode can be changed by specifying the desired mode as an argument."
+	echo "Usage: ./bios_power_mode <POWER MODE>"
+	exit 2
+fi
+
+if [[ $MODE == $NEW_MODE ]]
+then
+	>&2 echo "BIOS power mode is already at $MODE."
+	exit 3
+fi
+
+set_bios_power_mode $NEW_MODE
