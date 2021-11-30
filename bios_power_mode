@@ -2,6 +2,7 @@
 
 ACPI_CALL_PATH=/proc/acpi/call
 NEW_MODE=$1
+NEW_SWITCH=$2
 
 # Check status of acpi_call module
 stat $ACPI_CALL_PATH > /dev/null 2>&1
@@ -13,30 +14,58 @@ then
 	exit 1
 fi
 
+check_rapid_charge() {
+	# Check if rapid charge is on
+	echo '\_SB.PCI0.LPC0.EC0.FCGM' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+	BYTE0=$(tr -d '\0' < $ACPI_CALL_PATH  | grep -o "0x.")
+
+	if [[ $BYTE0 == "0x0" ]]
+	then
+		echo "off"
+	else
+		echo "on"
+	fi
+}
+
+toggle_rapid_charge() {
+	SWITCH=$(check_rapid_charge)
+
+	# Toggle Rapid charging
+	if [[ $SWITCH == "off" ]]
+	then
+		echo "Turning on Rapid Charge"
+		# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x07' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+	else
+		echo "Turning off Rapid Charge"
+		# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x08' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+	fi
+}
+
 set_bios_power_mode() {
 	case "$1" in
 		"BATTERY_SAVING")
 			echo "Turning on Battery Saving mode in BIOS"
-			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0013B001' | tee $ACPI_CALL_PATH
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0013B001' | tee $ACPI_CALL_PATH > /dev/null 2>&1
 			;;
 		"INTELLIGENT_COOLING")
 			echo "Turning on Intelligent Cooling mode in BIOS"
-			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x000FB001' | tee $ACPI_CALL_PATH
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x000FB001' | tee $ACPI_CALL_PATH > /dev/null 2>&1
 			;;
 		"EXTREME_PERFORMANCE")
 			echo "Turning on Extreme Performance mode in BIOS"
-			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0012B001' | tee $ACPI_CALL_PATH
+			echo '\_SB.PCI0.LPC0.EC0.VPC0.DYTC 0x0012B001' | tee $ACPI_CALL_PATH > /dev/null 2>&1
 			;;
 		"RAPID_CHARGE")
-			echo "Turning on Rapid Charge"
-			# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x07' | tee $ACPI_CALL_PATH
+			toggle_rapid_charge
 			;;
 		*) 
 			>&2 echo "Error. Mode specified is not correct."
 			>&2 echo "Choose one of [ EXTREME_PERFORMANCE , INTELLIGENT_COOLING , BATTERY_SAVING , RAPID_CHARGE ]"
-			exit 4
+			exit 5
 			;;
 	esac
+
+	exit 0
 }
 
 check_bios_power_mode() {
@@ -60,18 +89,35 @@ check_bios_power_mode() {
 }
 
 MODE=$(check_bios_power_mode)
+SWITCH=$(check_rapid_charge)
 
-if [[ "$#" -ne 1 ]]; then
-	echo "BIOS active power mode is $MODE."
-	echo "This mode can be changed by specifying the desired mode as an argument."
-	echo "Usage: ./bios_power_mode <POWER MODE>"
-	exit 2
-fi
-
+# Just some sanity checks
 if [[ $MODE == $NEW_MODE ]]
 then
 	>&2 echo "BIOS power mode is already at $MODE."
 	exit 3
+elif [[ $SWITCH == $NEW_SWITCH ]]
+then
+	>&2 echo "Rapid charging is already turned $SWITCH."
+	exit 4
+elif [[ $NEW_MODE == "active" ]]
+then
+	echo "$MODE"
+	exit 0
+fi
+
+if [[ "$#" -lt 1 ]]
+then
+	echo "$MODE is the active BIOS power mode."
+	echo "Rapid charging is turned $SWITCH."
+	echo "This mode can be changed by specifying the desired mode as an argument."
+	echo "Usage: ./bios_power_mode <POWER MODE>"
+	exit 2
+elif [[ $NEW_MODE == "RAPID_CHARGE" ]] && [[ "$#" -ne 2 ]]
+then
+	echo "Wrong number of arguments"
+	echo "Usage: ./bios_power_mode RAPID_CHARGE <on/off>"
+	exit 2
 fi
 
 set_bios_power_mode $NEW_MODE

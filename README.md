@@ -11,7 +11,7 @@ The settings are changed using the acpi_call kernel module and the calls specifi
     - Intelligent cooling
     - Battery saving
     - Extreme performance
-- Rapid charging
+- Rapid charge
 - Conserve battery (stops charging when connected to power at 60%)
 
 I also include a script `conserve_battery` to turn on the battery conservation mode at 80% battery instead of 60% so when I unplug the laptop from power it has more charge. The script was made to be run in a cron job every X minutes.
@@ -34,25 +34,31 @@ Note: you have to run these commands for every new kernel you install.
 
 ## Usage/Examples
 
-    sudo ./bios-power-mode <mode>
+    sudo ./bios_power_mode <mode>
 
 The `mode` value can be either:
 - `INTELLIGENT_COOLING`
 - `POWER_SAVING`
 - `EXTREME_PERFORMANCE`
-- `RAPID_CHARGING`
+- `RAPID_CHARGE`
 
-Not specifying a value will show the mode currently enabled.
+When setting rapid charge mode, specify on or off:
+
+	sudo ./bios_power_mode RAPID_CHARGE <on/off>
+	
+Get active mode:
+
+	sudo ./bios_power_mode active
 
 ### Automate changing power modes
 
 You can include udev rules in `/etc/udev/rules.d/10-power.rules` to change the BIOS power mode when the laptop is plugged/unplugged from power.
 
 ```
-SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_STATUS}=="Discharging", RUN+="/usr/local/bin/bios-power-mode BATTERY_SAVING"
-SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_STATUS}=="Unknown", RUN+="/usr/local/bin/bios-power-mode INTELLIGENT_COOLING"
+SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_STATUS}=="Discharging", RUN+="/usr/local/bin/bios_power_mode BATTERY_SAVING"
+SUBSYSTEM=="power_supply", ENV{POWER_SUPPLY_STATUS}=="Charging", RUN+="/usr/local/bin/bios_power_mode INTELLIGENT_COOLING"
 ```
 
 ## To do
 
-- [ ] Toggle rapid charging (currently only turns on)
+- [X] Toggle rapid charge
