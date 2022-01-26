@@ -34,10 +34,10 @@ toggle_rapid_charge() {
 	if [[ $SWITCH == "off" ]]
 	then
 		echo "Turning on Rapid Charge"
-		# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x07' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+		echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x07' | tee $ACPI_CALL_PATH > /dev/null 2>&1
 	else
 		echo "Turning off Rapid Charge"
-		# echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x08' | tee $ACPI_CALL_PATH > /dev/null 2>&1
+		echo '\_SB.PCI0.LPC0.EC0.VPC0.SBMC 0x08' | tee $ACPI_CALL_PATH > /dev/null 2>&1
 	fi
 }
 
